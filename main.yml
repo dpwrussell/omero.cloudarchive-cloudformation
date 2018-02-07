@@ -31,13 +31,6 @@ Parameters:
       Specifies the list of existing VPC Subnet Ids where ECS instances will
       run. Please specify exactly two.
 
-  SecurityGroupId:
-    Type: String
-    Description: >
-      Optional - Specifies the Security Group Id of an existing Security
-      Group. Leave blank to have a new Security Group created
-    Default: ''
-
   EcsInstanceType:
     Type: String
     Description: >
@@ -57,33 +50,6 @@ Parameters:
       Specifies the number of instances to launch and register to the cluster.
       Defaults to 3.
     Default: 3
-
-  SecurityIngressFromPort:
-    Type: Number
-    Description: >
-      Optional - Specifies the Start of Security Group port to open on
-      ECS instances - defaults to port 0
-    Default: 0
-
-  SecurityIngressToPort:
-    Type: Number
-    Description: >
-      Optional - Specifies the End of Security Group port to open on ECS
-      instances - defaults to port 65535
-    Default: 65535
-
-  SecurityIngressCidrIp:
-    Type: String
-    Description: >
-      Optional - Specifies the CIDR/IP range for Security Ports - defaults
-      to 0.0.0.0/0
-    Default: 0.0.0.0/0
-
-  EcsEndpoint:
-    Type: String
-    Description: >
-      Optional - Specifies the ECS Endpoint for the ECS Agent to connect to
-    Default: ''
 
   VpcAvailabilityZones:
     Type: CommaDelimitedList
@@ -253,6 +219,14 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp: 0.0.0.0/0
 
   # As the security group is self referencing, this rule must be specified
   # externally
@@ -344,7 +318,7 @@ Resources:
       # TODO Is this the right value?? If I don't specify it, it might default to "classic" mode
       DBSubnetGroupName: default
       Engine: postgres
-      EngineVersion: 9.6.6
+      EngineVersion: 9.4.15
       MasterUsername: postgres
       MasterUserPassword: postgres
       # TODO Create an ARN in this template to enable monitoring here
@@ -394,7 +368,7 @@ Resources:
       Subnets: !Ref SubnetIds
       Scheme: internet-facing
       SecurityGroups:
-        - !If [ CreateNewSecurityGroup, !Ref EcsSecurityGroup, !Ref SecurityGroupId ]
+        - !Ref SG
       Listeners:
         - LoadBalancerPort: 6379
           InstancePort: 6379
@@ -405,15 +379,15 @@ Resources:
         UnhealthyThreshold: 5
         Interval: 30
         Timeout: 5
-      AccessLoggingPolicy:
-        S3BucketName:
-          Ref: S3LoggingBucket
-        S3BucketPrefix: Logs
-        Enabled: 'true'
-        EmitInterval: '60'
-    DependsOn: S3LoggingBucketPolicy
+    #   AccessLoggingPolicy:
+    #     S3BucketName:
+    #       Ref: S3LoggingBucket
+    #     S3BucketPrefix: Logs
+    #     Enabled: 'true'
+    #     EmitInterval: '60'
+    # DependsOn: S3LoggingBucketPolicy
 
-  # RedisTaskDefinition:
+  RedisTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Sub ${AWS::StackName}-redis
@@ -422,7 +396,7 @@ Resources:
           Cpu: 256
           Essential: true
           Image: sorgerlab/omero-redis
-          Memory: 1GB
+          Memory: 1000
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -438,7 +412,6 @@ Resources:
 
   RedisService:
     Type: AWS::ECS::Service
-    LaunchType: FARGATE
     Properties:
       Cluster: !Ref ECSCluster
       DesiredCount: 1
@@ -471,13 +444,13 @@ Resources:
         UnhealthyThreshold: 5
         Interval: 30
         Timeout: 5
-      AccessLoggingPolicy:
-        S3BucketName:
-          Ref: S3LoggingBucket
-        S3BucketPrefix: Logs
-        Enabled: 'true'
-        EmitInterval: '60'
-    DependsOn: S3LoggingBucketPolicy
+    #   AccessLoggingPolicy:
+    #     S3BucketName:
+    #       Ref: S3LoggingBucket
+    #     S3BucketPrefix: Logs
+    #     Enabled: 'true'
+    #     EmitInterval: '60'
+    # DependsOn: S3LoggingBucketPolicy
 
   OmeroTaskDefinition:
     Type: AWS::ECS::TaskDefinition

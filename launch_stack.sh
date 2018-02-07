@@ -15,7 +15,7 @@ echo "Launching stack: main.yml"
 aws cloudformation create-stack \
   --profile sudo \
   --capabilities CAPABILITY_IAM \
-  --stack-name etl-pat-db11 \
+  --stack-name etl-pat \
   --template-body file://main.yml \
   --tags \
     Key=project,Value=lincs \
